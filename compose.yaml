@@ -1,0 +1,22 @@
+services:
+  # # Backend
+  # portfolio-backend:
+  #   container_name: portfolio-backend
+  #   networks:
+  #     - portfolio-networks
+
+  # # データベース
+  # portfolio-db:
+  #   container_name: portfolio-db
+  #   networks:
+  #     - portfolio-networks
+
+  # # Frontend
+  # portfolio-frontend:
+  #   container_name: portfolio-frontend
+  #   networks:
+  #     - portfolio-networks
+
+networks:
+  portfolio-networks:
+    driver: bridge
