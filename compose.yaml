@@ -1,9 +1,18 @@
 services:
-  # # Backend
-  # portfolio-backend:
-  #   container_name: portfolio-backend
-  #   networks:
-  #     - portfolio-networks
+  # Backend
+  portfolio-backend:
+    container_name: portfolio-backend
+    build: 
+      context: .
+      dockerfile: ./Python/Dockerfile
+    volumes:
+      - "./Project/My-Portfolio-Back:/mysite"
+    ports:
+      - "8000:8000"
+    tty: true
+    working_dir: "/mysite"
+    networks:
+      - portfolio-networks
 
   # # データベース
   # portfolio-db:
