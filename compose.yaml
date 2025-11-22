@@ -20,11 +20,19 @@ services:
   #   networks:
   #     - portfolio-networks
 
-  # # Frontend
-  # portfolio-frontend:
-  #   container_name: portfolio-frontend
-  #   networks:
-  #     - portfolio-networks
+  # Frontend
+  portfolio-frontend:
+    container_name: portfolio-frontend
+    build: 
+      context: .
+      dockerfile: ./Node/Dockerfile
+    volumes:
+      - "./Project/My-Portfolio-Front:/home/node/app"
+    ports:
+      - "3000:3000"
+    tty: true
+    networks:
+      - portfolio-networks
 
 networks:
   portfolio-networks:
