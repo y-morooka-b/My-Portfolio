@@ -40,7 +40,6 @@ services:
   # Frontend
   portfolio-frontend:
     container_name: portfolio-frontend
-    user: "1000:1000"
     build: 
       context: .
       dockerfile: ./Node/Dockerfile
