@@ -5,6 +5,7 @@ services:
     build: 
       context: .
       dockerfile: ./Python/Dockerfile
+    user: 1000:1000
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
@@ -15,6 +16,10 @@ services:
       - "8000:8000"
     tty: true
     working_dir: "/mysite"
+    depends_on:
+      portfolio-db :
+        # dbのヘルスチェックが終わってからappを起動させる
+        condition: service_healthy
     networks:
       - portfolio-networks
 
@@ -34,6 +39,12 @@ services:
     ports:
       - "3306:3306"
     tty: true
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD
+      interval: 1s
+      timeout: 10s
+      retries: 100
+      start_period: 30s
     networks:
       - portfolio-networks
 
