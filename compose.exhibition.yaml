@@ -1,0 +1,69 @@
+services:
+  # Backend
+  portfolio-backend:
+    container_name: portfolio-backend
+    build: 
+      context: .
+      dockerfile: ./Python/Dockerfile
+    user: 1000:1000
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - "./Project/My-Portfolio-Back:/mysite"
+    ports:
+      - "8000:8000"
+    tty: true
+    working_dir: "/mysite"
+    depends_on:
+      portfolio-db :
+        # dbのヘルスチェックが終わってからappを起動させる
+        condition: service_healthy
+    networks:
+      - portfolio-networks
+
+  # データベース
+  portfolio-db:
+    container_name: portfolio-db
+    build: 
+      context: .
+      dockerfile: ./MySQL/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - "./MySQL/exhibition_strage/strage:/var/lib/mysql"
+      - "./MySQL/exhibition_strage/sample.dump:/backup/sample.dump"
+      - "./MySQL/exhibition_strage/restore.sh:/backup/restore.sh"
+    ports:
+      - "3306:3306"
+    tty: true
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD
+      interval: 1s
+      timeout: 10s
+      retries: 100
+      start_period: 30s
+    networks:
+      - portfolio-networks
+
+  # Frontend
+  portfolio-frontend:
+    container_name: portfolio-frontend
+    build: 
+      context: .
+      dockerfile: ./Node/Dockerfile
+    volumes:
+      - "./Project/My-Portfolio-Front:/home/node/app"
+    ports:
+      - "3000:3000"
+    tty: true
+    networks:
+      - portfolio-networks
+
+networks:
+  portfolio-networks:
+    driver: bridge

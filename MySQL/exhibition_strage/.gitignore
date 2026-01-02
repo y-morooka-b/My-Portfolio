@@ -1,0 +1,4 @@
+*
+!.gitignore
+!sample.dump
+!restore.sh
