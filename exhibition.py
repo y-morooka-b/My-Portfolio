@@ -1,10 +1,9 @@
+import argparse
 import os
 import subprocess
-import sys
-import argparse
-from urllib.parse import urlparse
 from pathlib import Path
 from typing import List
+from urllib.parse import urlparse
 
 # 実行するyamlの指定
 COMPOSE_YAML_PATH = 'compose.exhibition.yaml'
@@ -66,7 +65,7 @@ class GitManagement:
                 print(f'クローン済みのためスキップ : {repo_dir_path}')
             else:
                 print(f'Cloning {url}...')
-                subprocess.run(['git', 'clone', repo])
+                subprocess.run(['git', 'clone', url])
 
             self._work_dir_list.append(repo_dir_path)
 
@@ -131,8 +130,14 @@ class DockerManagement:
         self.__stop_running_containers()
         self.__compose_pull()
         self.__compose_build()
-        self.__db_migrate()
         self.__compose_up()
+
+    def execute_init(self):
+        self.__compose_pull()
+        self.__compose_build()
+        self.__npm_install()
+        self.__db_migrate()
+        self.__db_restore()
 
     def execute_stop(self):
         self.__stop_running_containers()
@@ -140,6 +145,8 @@ class DockerManagement:
     def execute_build(self):
         self.__compose_pull()
         self.__compose_build()
+
+    def execute_reset_db(self):
         self.__db_migrate()
         self.__db_restore()
 
@@ -217,9 +224,25 @@ class DockerManagement:
         """
         self.__run_compose_command(['run', 'portfolio-backend', 'python' , 'manage.py', 'migrate'])
 
-    def __db_restore(self) -> None:
-        self.__run_compose_command(['run', 'portfolio-db', 'bash', '/backup/restore.sh'])
+    def __npm_install(self) -> None:
+        """
+        npm installコマンドを実行
 
+        このメソッドは、portfolio - dbサービスのコンテナ内で
+        サービス環境に必要なnpm依存関係のインストールを行います。
+
+        :return: None
+        """
+        self.__run_compose_command(['run', 'portfolio-frontend', 'npm', 'install'], False)
+
+    def __db_restore(self) -> None:
+        """
+        コンテナ内でスクリプトを実行してデータベースを復元
+        このメソッドは、バックアップデータを復元するためにコンテナ内にある事前に定義されたコマンドとスクリプトに依存します
+
+        :return: None
+        """
+        self.__run_compose_command(['run', 'portfolio-db', 'bash', '/backup/restore.sh'])
 
     def __run_compose_command(self, command: list[str], capture_output:bool = True):
         try:
@@ -231,7 +254,6 @@ class DockerManagement:
                 capture_output=capture_output,
                 text=True,
                 check=True,
-                # executable='/bin/bash'
             )
 
             print(f'SUCCESSFUL {" ".join(command)} 成功（{self._docker_dir}）')
@@ -248,7 +270,6 @@ def handle_all(args) -> None:
     docker_manager = DockerManagement(docker_dir)
     docker_manager.execute()
 
-
 def handle_init(args) -> None:
     docker_dir = os.getcwd()
     print(f'カレントディレクトリ : {docker_dir}')
@@ -256,7 +277,7 @@ def handle_init(args) -> None:
     git_manager = GitManagement(docker_dir)
     git_manager.execute()
     docker_manager = DockerManagement(docker_dir)
-    docker_manager.execute_build()
+    docker_manager.execute_init()
 
 def handle_clone(args) -> None:
     """
@@ -288,32 +309,28 @@ def handle_build(args) -> None:
     docker_manager.execute_build()
 
 def handle_run(args) -> None:
-    """
-    コンテナの起動
-
-    :param args:
-        argparse 用の引数
-        未使用
-    :type args: Any
-    :return: None
-    """
-
     docker_dir = os.getcwd()
     print(f'カレントディレクトリ : {docker_dir}')
 
     docker_manager = DockerManagement(docker_dir)
     docker_manager.execute()
 
+def handle_reset_db(args) -> None:
+    docker_dir = os.getcwd()
+    print(f'カレントディレクトリ : {docker_dir}')
+
+    docker_manager = DockerManagement(docker_dir)
+    docker_manager.execute_reset_db()
+
 def main():
     try:
         parser = argparse.ArgumentParser(
             description=(
-                'プロジェクトの操作バッチ\n'
-                '    ※サブコマンド未指定時は 初期設定からDockerの起動まで行う'
+                'プロジェクトの操作バッチ'
             ),
-            formatter_class=argparse.RawTextHelpFormatter
+            formatter_class=argparse.RawTextHelpFormatter,
         )
-        subparsers = parser.add_subparsers(dest='command')
+        subparsers = parser.add_subparsers(dest='command', required=True)
 
         # 初期化
         run_parser = subparsers.add_parser(
@@ -359,14 +376,16 @@ def main():
         )
         run_parser.set_defaults(func=handle_run)
 
-        args = parser.parse_args()
+        # DBの登録データのリセット
+        run_parser = subparsers.add_parser(
+            'reset',
+            help='DBの登録データのリセット',
+            description='docker compose で起動'
+        )
+        run_parser.set_defaults(func=handle_reset_db)
 
-        # サブコマンドが指定されていない場合は run を実行
-        if not hasattr(args, "func"):
-            # run のデフォルト動作を呼び出す
-            handle_all(args)
-        else:
-            args.func(args)
+        args = parser.parse_args()
+        args.func(args)
 
     except Exception as e:
         print(f'エラー : {e}')
